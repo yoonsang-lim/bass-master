@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bass Master Pro - Cloud Station</title>
+    <title>Bass Master Pro - Practice Station</title>
     <script src="https://unpkg.com/dropbox/dist/Dropbox-sdk.min.js"></script>
     <style>
         :root { --bg: #f1f5f9; --primary: #2563eb; --accent: #e11d48; --card: #ffffff; --dark: #1e293b; --degree: #64748b; --scale-bg: #f8fafc; --success: #10b981; }
@@ -46,28 +46,48 @@
         .measure-card { background: #fff; padding: 18px; border-radius: 15px; border: 1px solid #f1f5f9; border-left: 6px solid var(--primary); text-align: center; transition: 0.2s; }
         .measure-card.active-beat { transform: scale(1.02); border: 2px solid var(--accent); border-left: 10px solid var(--accent); box-shadow: 0 0 15px rgba(225, 29, 72, 0.2); }
         
+        .chord-header { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; margin-bottom: 12px; }
+        .chord-name { font-size: 1.7rem; font-weight: 800; color: var(--dark); }
+        .original-notes { font-size: 0.95rem; font-weight: 600; color: #94a3b8; letter-spacing: 0.5px; }
+        
+        .notes-container { display: flex; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 10px; }
+        .note-name { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+        .pattern-info { font-size: 0.75rem; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+
         /* 탭 노트 스타일 */
+        .note-tab-container { align-items: flex-start; }
         .tab-header { display: flex; gap: 3px; margin-bottom: 10px; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; flex-wrap: wrap; }
         .tab-btn { background: #e2e8f0; color: var(--dark); border: none; padding: 5px 8px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: 0.2s; flex-grow: 1; text-align: center; }
         .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { width: 100%; }
         .note-area { width: 100%; height: 200px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px; padding: 12px; font-family: inherit; font-size: 0.9rem; resize: none; display: none; box-sizing: border-box; outline: none; line-height: 1.5; }
         .note-area.active { display: block; }
         
-        /* 클라우드 저장 컨트롤 */
+        /* 저장 버튼 레이아웃 */
+        .save-controls { display: flex; gap: 8px; width: 100%; margin-top: 12px; }
+        .btn-save { background: var(--success); color: white; flex: 1; font-size: 0.75rem; }
+        .btn-export { background: #475569; color: white; flex: 1.5; font-size: 0.75rem; }
+
+        /* 드롭박스 동기화 컨트롤 (수정 사항 2: 스타일 추가) */
         .cloud-controls { width: 100%; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
         .cloud-row { display: flex; gap: 5px; margin-bottom: 8px; }
-        #dbxToken { width: 100%; font-size: 0.65rem; padding: 5px; border-radius: 5px; border: 1px solid #cbd5e1; }
-        .btn-cloud { font-size: 0.7rem; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; }
-        .btn-dbx-save { background: #0061ff; color: white; border: none; }
+        #dbxToken { width: 100%; font-size: 0.65rem; padding: 5px; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; }
+        .btn-cloud { font-size: 0.7rem; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; border: none; }
+        .btn-dbx-save { background: #0061ff; color: white; }
         .btn-dbx-load { background: #f3f9ff; color: #0061ff; border: 1px solid #0061ff; }
 
-        /* 하단 PDF */
-        .pdf-viewer-section { width: 100%; background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 10px; }
+        /* 3. 하단 PDF 뷰어 */
+        .pdf-viewer-section { width: 100%; background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; margin-top: 10px; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         #pdfFrame { width: 100%; height: 600px; border: 1px solid #e2e8f0; border-radius: 10px; display: none; }
+        .pdf-placeholder { width: 100%; height: 100px; border: 2px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
 
         @media (max-width: 950px) {
             .main-layout, .dashboard { flex-direction: column; align-items: center; }
-            .left-sidebar { width: 100%; }
+            .left-sidebar { width: 100%; flex: none; }
+            .progression-board { width: 100%; }
+            #circleOfFifths { width: 220px; height: 220px; }
+            #pdfFrame { height: 450px; }
         }
     </style>
 </head>
@@ -78,9 +98,11 @@
         <div class="control-card">
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div class="label-text">GAP CLICK METRONOME</div>
-                <div id="bpmValue" class="bpm-display">80 BPM</div>
+                <div class="bpm-display" id="bpmValue">80 BPM</div>
             </div>
-            <div class="panel-row"><input type="range" id="bpmRange" min="40" max="220" value="80"></div>
+            <div class="panel-row">
+                <input type="range" id="bpmRange" min="40" max="220" value="80">
+            </div>
             <div class="beat-selector">
                 <button class="beat-toggle off" data-beat="0">1</button>
                 <button class="beat-toggle" data-beat="1">2</button>
@@ -89,14 +111,21 @@
             </div>
             <div class="panel-row">
                 <select id="noteResolution" style="flex:1.2;">
-                    <option value="1">4분</option><option value="2">8분</option><option value="4">16분</option>
+                    <option value="1">4분 (1/4)</option>
+                    <option value="2">8분 (1/8)</option>
+                    <option value="4">16분 (1/16)</option>
                 </select>
                 <button id="metroBtn" class="btn btn-main">START</button>
             </div>
         </div>
+
         <div class="control-card">
+            <div class="label-text">CUSTOM PRACTICE TIMER</div>
             <div id="timerDisplay" class="timer-display">10:00</div>
-            <div class="panel-row"><input type="number" id="timerInput" min="1" max="99" value="10"></div>
+            <div class="panel-row" style="justify-content: center;">
+                <label for="timerInput" style="font-size: 0.8rem; color: #94a3b8;">Set Min:</label>
+                <input type="number" id="timerInput" min="1" max="99" value="10">
+            </div>
             <div class="panel-row">
                 <button id="timerBtn" class="btn" style="background:var(--success); color:white; flex:2;">START</button>
                 <button id="resetTimerBtn" class="btn" style="background:#475569; color:white; flex:1;">RESET</button>
@@ -113,19 +142,29 @@
             <div class="scale-container">
                 <div style="font-weight: 800; margin-bottom: 10px;">🎹 스케일 구성음</div>
                 <select id="scaleSelect" style="width:100%; margin-bottom:15px;">
-                    <option value="majorPentatonic">Major Pentatonic</option>
-                    <option value="minorPentatonic">Minor Pentatonic</option>
-                    <option value="wholeTone">Whole Tone Scale</option>
-                    <option disabled>── 7가지 모드 ──</option>
-                    <option value="ionian">Ionian</option><option value="dorian">Dorian</option>
-                    <option value="phrygian">Phrygian</option><option value="lydian">Lydian</option>
-                    <option value="mixolydian">Mixolydian</option><option value="aeolian">Aeolian</option>
-                    <option value="locrian">Locrian</option>
+                    <option disabled>── 기본 & 모던 스케일 ──</option>
+                    <option value="majorPentatonic">Major Pentatonic (1 2 3 5 6)</option>
+                    <option value="minorPentatonic">Minor Pentatonic (1 b3 4 5 b7)</option>
+                    <option value="altered">Altered (1 b2 b3 b4 b5 b6 b7)</option>
+                    <option value="jazzMinor">Jazz Minor (1 2 b3 4 5 6 7)</option>
+                    <option value="wholeTone">Whole Tone Scale (1 2 3 #4 #5 b7)</option>
+                    <option disabled>── 7가지 모드 (Modes) ──</option>
+                    <option value="ionian">Ionian (1 2 3 4 5 6 7)</option>
+                    <option value="dorian">Dorian (1 2 b3 4 5 6 b7)</option>
+                    <option value="phrygian">Phrygian (1 b2 b3 4 5 b6 b7)</option>
+                    <option value="lydian">Lydian (1 2 3 #4 5 6 7)</option>
+                    <option value="mixolydian">Mixolydian (1 2 3 4 5 6 b7)</option>
+                    <option value="aeolian">Aeolian (1 2 b3 4 5 b6 b7)</option>
+                    <option value="locrian">Locrian (1 b2 b3 b4 b5 b6 b7)</option>
                 </select>
-                <div class="scale-result"><div id="scaleNotesDisplay" class="scale-notes">-</div></div>
+                <div class="scale-result">
+                    <div id="scaleNotesDisplay" class="scale-notes">-</div>
+                    <div id="scaleKeyLabel" style="font-size:0.75rem; color:var(--degree); margin-top:5px;">Select a Key</div>
+                </div>
             </div>
 
             <div class="note-tab-container">
+                <div style="font-weight: 800; margin-bottom: 10px;">📝 연습 메모</div>
                 <div class="tab-header">
                     <button class="tab-btn active" data-tab="tab_goal">목표</button>
                     <button class="tab-btn" data-tab="tab_memo">메모</button>
@@ -141,16 +180,21 @@
                     <textarea id="tab_groove" class="note-area" placeholder="그루브..."></textarea>
                     <textarea id="tab_chord" class="note-area" placeholder="코드톤..."></textarea>
                     <textarea id="tab_scale" class="note-area" placeholder="스케일..."></textarea>
-                    <textarea id="tab_penta" class="note-area" placeholder="펜타..."></textarea>
+                    <textarea id="tab_penta" class="note-area" placeholder="펜타토닉..."></textarea>
                     <textarea id="tab_tech" class="note-area" placeholder="테크닉..."></textarea>
                 </div>
-
+                <div class="save-controls">
+                    <button id="manualSaveBtn" class="btn btn-save">지금 저장</button>
+                    <button id="exportBtn" class="btn btn-export">백업 파일 생성 (.txt)</button>
+                </div>
                 <div class="cloud-controls">
-                    <div class="label-text" style="color:#0061ff">☁️ DROPBOX SYNC</div>
-                    <input type="password" id="dbxToken" placeholder="Paste Dropbox Access Token Here">
+                    <div class="label-text" style="color:#0061ff; margin-bottom: 5px;">☁️ DROPBOX SYNC</div>
                     <div class="cloud-row">
-                        <button id="dbxSaveBtn" class="btn-cloud btn-dbx-save">기기 데이터 → 클라우드 저장</button>
-                        <button id="dbxLoadBtn" class="btn-cloud btn-dbx-load">클라우드 → 현재 기기로 로드</button>
+                        <input type="password" id="dbxToken" placeholder="Dropbox Access Token">
+                    </div>
+                    <div class="cloud-row">
+                        <button id="dbxSaveBtn" class="btn-cloud btn-dbx-save">클라우드 저장</button>
+                        <button id="dbxLoadBtn" class="btn-cloud btn-dbx-load">클라우드 불러오기</button>
                     </div>
                 </div>
             </div>
@@ -159,18 +203,258 @@
     </div>
 
     <div class="pdf-viewer-section">
-        <button class="btn btn-pdf" onclick="document.getElementById('pdfInput').click()">악보 선택 (.pdf)</button>
-        <input type="file" id="pdfInput" accept="application/pdf" style="display: none;">
+        <div class="pdf-header">
+            <div style="font-weight: 800; color: var(--dark);">📄 연습용 악보 (PDF)</div>
+            <input type="file" id="pdfInput" accept="application/pdf" style="display: none;">
+            <button class="btn btn-pdf" onclick="document.getElementById('pdfInput').click()">악보 선택 (.pdf)</button>
+        </div>
+        <div id="pdfPlaceholder" class="pdf-placeholder">
+            <div>연습할 PDF 파일을 선택해 주세요.</div>
+        </div>
         <iframe id="pdfFrame"></iframe>
     </div>
 </div>
 
 <script>
-    // --- 🆕 드롭박스 연동 로직 ---
+    // PDF 로직
+    const pdfInput = document.getElementById('pdfInput'), pdfFrame = document.getElementById('pdfFrame'), pdfPlaceholder = document.getElementById('pdfPlaceholder');
+    pdfInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && file.type === 'application/pdf') {
+            pdfFrame.src = URL.createObjectURL(file);
+            pdfFrame.style.display = 'block'; pdfPlaceholder.style.display = 'none';
+        }
+    });
+
+    const noteNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    const circleOrder = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+    let currentKeyRoot = 0;
+
+    let audioCtx = null, isPlaying = false, currentBeat = 0, nextNoteTime = 0.0, timerID = null, bpm = 80, resolution = 1, totalElapsedBeats = 0;
+    let beatMutes = [false, true, false, true]; 
+
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+    function playClick(time, beat16) {
+        if (!beatMutes[Math.floor(beat16 / 4)]) return;
+        const osc = audioCtx.createOscillator(), env = audioCtx.createGain();
+        osc.frequency.value = (beat16 === 0) ? 1000 : (beat16 % 4 === 0 ? 600 : 400);
+        env.gain.setValueAtTime(0.2, time); env.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        osc.connect(env); env.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.05);
+    }
+
+    function scheduler() {
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            if (currentBeat % (4 / resolution) === 0) playClick(nextNoteTime, currentBeat);
+            if (currentBeat === 0) {
+                const ms = document.querySelectorAll('.measure-card');
+                ms.forEach(m => m.classList.remove('active-beat'));
+                const idx = Math.floor(totalElapsedBeats / 16) % 8;
+                if(ms[idx]) ms[idx].classList.add('active-beat');
+            }
+            nextNoteTime += (60.0 / bpm) / 4; currentBeat = (currentBeat + 1) % 16; totalElapsedBeats++;
+        }
+        timerID = setTimeout(scheduler, 25.0);
+    }
+
+    const metroBtn = document.getElementById('metroBtn');
+    document.querySelectorAll('.beat-toggle').forEach(btn => {
+        btn.onclick = () => {
+            const idx = parseInt(btn.dataset.beat);
+            beatMutes[idx] = !beatMutes[idx]; btn.classList.toggle('off', !beatMutes[idx]);
+        };
+    });
+
+    metroBtn.onclick = function() {
+        initAudio(); isPlaying = !isPlaying;
+        if (isPlaying) {
+            currentBeat = 0; totalElapsedBeats = 0; nextNoteTime = audioCtx.currentTime;
+            scheduler(); this.innerText = "STOP"; this.classList.add('playing');
+        } else {
+            clearTimeout(timerID); this.innerText = "START"; this.classList.remove('playing');
+            document.querySelectorAll('.measure-card').forEach(m => m.classList.remove('active-beat'));
+        }
+    };
+
+    document.getElementById('bpmRange').oninput = (e) => {
+        bpm = e.target.value; document.getElementById('bpmValue').innerText = `${bpm} BPM`;
+    };
+    document.getElementById('noteResolution').onchange = (e) => resolution = parseInt(e.target.value);
+
+    let timeLeft = 600, timerRunning = false, timerInterval = null;
+    function updateTimer() {
+        const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+        document.getElementById('timerDisplay').innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    document.getElementById('timerInput').oninput = function() {
+        if (!timerRunning) { timeLeft = parseInt(this.value) * 60; updateTimer(); }
+    };
+
+    document.getElementById('timerBtn').onclick = function() {
+        if (timerRunning) { clearInterval(timerInterval); this.innerText = "START"; this.style.background = "var(--success)"; }
+        else {
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) { timeLeft--; updateTimer(); }
+                else { clearInterval(timerInterval); timerRunning = false; alert("연습 종료!"); }
+            }, 1000);
+            this.innerText = "PAUSE"; this.style.background = "#f59e0b";
+        }
+        timerRunning = !timerRunning;
+    };
+
+    document.getElementById('resetTimerBtn').onclick = () => {
+        clearInterval(timerInterval); timerRunning = false;
+        timeLeft = parseInt(document.getElementById('timerInput').value) * 60;
+        updateTimer(); document.getElementById('timerBtn').innerText = "START";
+    };
+
+    const scaleForms = {
+        majorPentatonic: [0, 2, 4, 7, 9], 
+        minorPentatonic: [0, 3, 5, 7, 10], 
+        altered: [0, 1, 3, 4, 6, 8, 10],
+        jazzMinor: [0, 2, 3, 5, 7, 9, 11], 
+        wholeTone: [0, 2, 4, 6, 8, 10],
+        ionian: [0, 2, 4, 5, 7, 9, 11],
+        dorian: [0, 2, 3, 5, 7, 9, 10], 
+        phrygian: [0, 1, 3, 5, 7, 8, 10],
+        lydian: [0, 2, 4, 6, 7, 9, 11],
+        mixolydian: [0, 2, 4, 5, 7, 9, 10],
+        aeolian: [0, 2, 3, 5, 7, 8, 10],
+        locrian: [0, 1, 3, 5, 6, 8, 10]
+    };
+
+    const progressionPattern = [
+        { interval: 0, type: 'M7', label: 'I', deg2: 2 }, { interval: 5, type: 'M7', label: 'IV', deg2: 2 },
+        { interval: 11, type: 'm7b5', label: 'viiø', deg2: 1 }, { interval: 4, type: 'm7', label: 'iii', deg2: 1 },
+        { interval: 9, type: 'm7', label: 'vi', deg2: 2 }, { interval: 2, type: 'm7', label: 'ii', deg2: 2 },
+        { interval: 7, type: '7', label: 'V', deg2: 2 }, { interval: 0, type: 'M7', label: 'I', deg2: 2 }
+    ];
+    const forms = { 'M7': [0, 4, 7, 11], 'm7': [0, 3, 7, 10], '7': [0, 4, 7, 10], 'm7b5': [0, 3, 6, 10] };
+
+    function initCircle() {
+        const svg = document.getElementById('circleOfFifths');
+        circleOrder.forEach((n, i) => {
+            const angle = (i * 30 - 90) * (Math.PI / 180);
+            const xMajor = 150 + 105 * Math.cos(angle);
+            const yMajor = 150 + 105 * Math.sin(angle);
+            const xMinor = 150 + 72 * Math.cos(angle);
+            const yMinor = 150 + 72 * Math.sin(angle);
+            const minorIdx = (n + 9) % 12;
+
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "key-node"); g.id = "node-" + n;
+            g.onclick = () => updateKey(n);
+            
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", xMajor); c.setAttribute("cy", yMajor); c.setAttribute("r", 20);
+            
+            const tMajor = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            tMajor.setAttribute("x", xMajor); tMajor.setAttribute("y", yMajor); 
+            tMajor.setAttribute("class", "major-label");
+            tMajor.textContent = noteNames[n];
+
+            const tMinor = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            tMinor.setAttribute("x", xMinor); tMinor.setAttribute("y", yMinor); 
+            tMinor.setAttribute("class", "minor-label");
+            tMinor.textContent = noteNames[minorIdx] + "m";
+
+            g.append(c, tMajor, tMinor); 
+            svg.append(g);
+        });
+    }
+
+    function updateKey(val) {
+        document.querySelectorAll('.key-node').forEach(n => n.classList.remove('active'));
+        document.getElementById('node-' + val).classList.add('active');
+        currentKeyRoot = parseInt(val); renderProgression(currentKeyRoot); renderScale();
+    }
+
+    function renderScale() {
+        const scaleType = document.getElementById('scaleSelect').value;
+        const notes = scaleForms[scaleType].map(f => noteNames[(currentKeyRoot + f) % 12]);
+        document.getElementById('scaleNotesDisplay').innerText = notes.join(' ');
+        document.getElementById('scaleKeyLabel').innerText = `Key: ${noteNames[currentKeyRoot]}`;
+    }
+
+    function renderProgression(keyRoot) {
+        const board = document.getElementById('board'); board.innerHTML = '';
+        progressionPattern.forEach((p, idx) => {
+            const rIdx = (keyRoot + p.interval) % 12, cName = noteNames[rIdx] + (p.type === 'm7b5' ? 'm7b5' : p.type);
+            const tones = forms[p.type].map(f => noteNames[(rIdx + f) % 12]); 
+            const root = noteNames[rIdx], third = tones[1], fifth = tones[2], seventh = tones[3];
+            const patternIdx = (idx + 1) % 2 !== 0 ? '3-2-1-7' : '3-5-1-7';
+            let data = ((idx + 1) % 2 !== 0) 
+                ? [{d:'3',n:third},{d:'2',n:noteNames[(rIdx+p.deg2)%12]},{d:'1',n:root},{d:'7',n:seventh}] 
+                : [{d:'3',n:third},{d:'5',n:fifth},{d:'1',n:root},{d:'7',n:seventh}];
+
+            const card = document.createElement('div'); card.className = 'measure-card';
+            card.innerHTML = `
+                <div style="font-size:0.7rem; color:#94a3b8;">BAR ${idx + 1} (${p.label})</div>
+                <div class="chord-header">
+                    <div class="chord-name">${cName}</div>
+                    <div class="original-notes">(${tones.join(' ')})</div>
+                </div>
+                <div class="notes-container">${data.map(d => `<div style="text-align:center;"><div style="font-size:0.7rem; color:var(--degree);">${d.d}</div><div class="note-name">${d.n}</div></div>`).join('')}</div>
+                <div class="pattern-info">Pattern: ${patternIdx}</div>`;
+            board.appendChild(card);
+        });
+    }
+
+    const tabs = document.querySelectorAll('.tab-btn');
+    const noteAreas = document.querySelectorAll('.note-area');
+
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            noteAreas.forEach(n => n.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.add('active');
+        };
+    });
+
+    noteAreas.forEach(area => {
+        area.value = localStorage.getItem('bassMaster_' + area.id) || "";
+        area.oninput = () => {
+            localStorage.setItem('bassMaster_' + area.id, area.value);
+        };
+    });
+
+    document.getElementById('manualSaveBtn').onclick = function() {
+        noteAreas.forEach(area => localStorage.setItem('bassMaster_' + area.id, area.value));
+        const originalText = this.innerText;
+        this.innerText = "저장 완료! ✅";
+        this.style.background = "#059669";
+        setTimeout(() => {
+            this.innerText = originalText;
+            this.style.background = "var(--success)";
+        }, 1500);
+    };
+
+    document.getElementById('exportBtn').onclick = () => {
+        let exportData = "=== BASS MASTER PRACTICE NOTES ===\n\n";
+        tabs.forEach(tab => {
+            const area = document.getElementById(tab.dataset.tab);
+            exportData += `[${tab.innerText}]\n${area.value}\n\n`;
+        });
+        
+        const blob = new Blob([exportData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Bass_Practice_${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // --- 드롭박스 동기화 로직 (수정 사항 4: 로직 추가) ---
     const DBX_FILE_PATH = '/bass_practice_notes.json';
     const dbxTokenInput = document.getElementById('dbxToken');
 
-    // 토큰은 보안상 로컬스토리지에만 저장
+    // 토큰을 로컬스토리지에 저장하여 편리하게 사용
     dbxTokenInput.value = localStorage.getItem('dbx_access_token') || "";
     dbxTokenInput.onchange = (e) => localStorage.setItem('dbx_access_token', e.target.value);
 
@@ -180,9 +464,9 @@
         return new Dropbox.Dropbox({ accessToken: token });
     }
 
-    // 클라우드로 저장
     document.getElementById('dbxSaveBtn').onclick = async function() {
         const dbx = getDbx(); if (!dbx) return;
+        const originalText = this.innerText;
         this.innerText = "저장 중...";
         
         const dataToSave = {};
@@ -194,14 +478,18 @@
                 contents: JSON.stringify(dataToSave),
                 mode: 'overwrite'
             });
-            alert("드롭박스 저장 완료! 이제 다른 기기에서 불러올 수 있습니다.");
-        } catch (e) { console.error(e); alert("저장 실패. 토큰을 확인하세요."); }
-        finally { this.innerText = "기기 데이터 → 클라우드 저장"; }
+            alert("드롭박스 저장 완료!");
+        } catch (e) {
+            console.error(e);
+            alert("저장 실패. 토큰이나 권한을 확인하세요.");
+        } finally {
+            this.innerText = originalText;
+        }
     };
 
-    // 클라우드에서 불러오기
     document.getElementById('dbxLoadBtn').onclick = async function() {
         const dbx = getDbx(); if (!dbx) return;
+        const originalText = this.innerText;
         this.innerText = "불러오는 중...";
         
         try {
@@ -216,94 +504,17 @@
                     localStorage.setItem('bassMaster_' + id, data[id]);
                 }
             });
-            alert("불러오기 완료! 데이터가 최신 상태로 동기화되었습니다.");
-        } catch (e) { console.error(e); alert("불러오기 실패. 파일이 없거나 토큰 오류입니다."); }
-        finally { this.innerText = "클라우드 → 현재 기기로 로드"; }
-    };
-
-    // --- 기존 로직 (수정 금지 영역) ---
-    const noteNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-    const circleOrder = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
-    let currentKeyRoot = 0;
-    const scaleForms = {
-        majorPentatonic: [0, 2, 4, 7, 9], minorPentatonic: [0, 3, 5, 7, 10], wholeTone: [0, 2, 4, 6, 8, 10],
-        ionian: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10],
-        lydian: [0, 2, 4, 6, 7, 9, 11], mixolydian: [0, 2, 4, 5, 7, 9, 10], aeolian: [0, 2, 3, 5, 7, 8, 10], locrian: [0, 1, 3, 5, 6, 8, 10]
-    };
-    const progressionPattern = [{ i: 0, t: 'M7', l: 'I' }, { i: 5, t: 'M7', l: 'IV' }, { i: 11, t: 'm7b5', l: 'viiø' }, { i: 4, t: 'm7', l: 'iii' }, { i: 9, t: 'm7', l: 'vi' }, { i: 2, t: 'm7', l: 'ii' }, { i: 7, t: '7', l: 'V' }, { i: 0, t: 'M7', l: 'I' }];
-
-    function initCircle() {
-        const svg = document.getElementById('circleOfFifths');
-        circleOrder.forEach((n, i) => {
-            const angle = (i * 30 - 90) * (Math.PI / 180);
-            const x = 150 + 105 * Math.cos(angle), y = 150 + 105 * Math.sin(angle);
-            const xm = 150 + 72 * Math.cos(angle), ym = 150 + 72 * Math.sin(angle);
-            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            g.setAttribute("class", "key-node"); g.id = "node-" + n; g.onclick = () => updateKey(n);
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 20);
-            const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            t.setAttribute("x", x); t.setAttribute("y", y); t.setAttribute("class", "major-label"); t.textContent = noteNames[n];
-            const tm = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            tm.setAttribute("x", xm); tm.setAttribute("y", ym); tm.setAttribute("class", "minor-label"); tm.textContent = noteNames[(n + 9) % 12] + "m";
-            g.append(c, t, tm); svg.append(g);
-        });
-    }
-
-    function updateKey(val) {
-        document.querySelectorAll('.key-node').forEach(n => n.classList.remove('active'));
-        document.getElementById('node-' + val).classList.add('active');
-        currentKeyRoot = val; renderProgression(val); renderScale();
-    }
-
-    function renderScale() {
-        const type = document.getElementById('scaleSelect').value;
-        const notes = scaleForms[type].map(f => noteNames[(currentKeyRoot + f) % 12]);
-        document.getElementById('scaleNotesDisplay').innerText = notes.join(' ');
-    }
-
-    function renderProgression(keyRoot) {
-        const board = document.getElementById('board'); board.innerHTML = '';
-        progressionPattern.forEach((p, idx) => {
-            const rIdx = (keyRoot + p.i) % 12;
-            const card = document.createElement('div'); card.className = 'measure-card';
-            card.innerHTML = `<div style="font-size:0.7rem; color:#94a3b8;">${p.l}</div><div class="chord-name">${noteNames[rIdx]}${p.t}</div>`;
-            board.appendChild(card);
-        });
-    }
-
-    const tabs = document.querySelectorAll('.tab-btn');
-    const noteAreas = document.querySelectorAll('.note-area');
-    tabs.forEach(tab => {
-        tab.onclick = () => {
-            tabs.forEach(t => t.classList.remove('active')); noteAreas.forEach(n => n.classList.remove('active'));
-            tab.classList.add('active'); document.getElementById(tab.dataset.tab).classList.add('active');
-        };
-    });
-
-    noteAreas.forEach(area => {
-        area.value = localStorage.getItem('bassMaster_' + area.id) || "";
-        area.oninput = () => localStorage.setItem('bassMaster_' + area.id, area.value);
-    });
-
-    // 메트로놈/타이머 (기존 기능 유지)
-    let audioCtx = null, isPlaying = false, currentBeat = 0, nextNoteTime = 0, timerID = null;
-    document.getElementById('metroBtn').onclick = function() {
-        if (!audioCtx) audioCtx = new AudioContext(); isPlaying = !isPlaying;
-        if (isPlaying) { nextNoteTime = audioCtx.currentTime; scheduler(); this.innerText = "STOP"; } else { clearTimeout(timerID); this.innerText = "START"; }
-    };
-    function scheduler() {
-        while (nextNoteTime < audioCtx.currentTime + 0.1) {
-            const osc = audioCtx.createOscillator(); const env = audioCtx.createGain();
-            osc.frequency.value = currentBeat === 0 ? 1000 : 500; env.gain.value = 0.1;
-            osc.connect(env); env.connect(audioCtx.destination); osc.start(nextNoteTime); osc.stop(nextNoteTime + 0.05);
-            nextNoteTime += 60 / document.getElementById('bpmRange').value; currentBeat = (currentBeat + 1) % 4;
+            alert("불러오기 완료!");
+        } catch (e) {
+            console.error(e);
+            alert("불러오기 실패. 파일이 없거나 토큰 오류입니다.");
+        } finally {
+            this.innerText = originalText;
         }
-        timerID = setTimeout(scheduler, 25);
-    }
-    document.getElementById('bpmRange').oninput = (e) => document.getElementById('bpmValue').innerText = e.target.value + " BPM";
+    };
 
-    window.onload = () => { initCircle(); updateKey(0); };
+    document.getElementById('scaleSelect').onchange = renderScale;
+    window.onload = () => { initCircle(); updateKey(0); updateTimer(); };
 </script>
 
 </body>
