@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Master Pro - Fully Restored</title>
+    <style>
+        :root { --bg: #f1f5f9; --primary: #2563eb; --accent: #e11d48; --card: #ffffff; --dark: #1e293b; --degree: #64748b; --scale-bg: #f8fafc; --success: #10b981; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background: var(--bg); padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .container { width: 100%; max-width: 1050px; }
+        
+        /* 1. 상단 대시보드 */
+        .dashboard { display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; margin-bottom: 20px; width: 100%; }
+        .control-card { background: var(--dark); color: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
+        .panel-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .label-text { font-size: 0.75rem; color: #94a3b8; font-weight: bold; margin-bottom: 5px; }
+        .beat-selector { display: flex; gap: 8px; margin-top: 5px; }
+        .beat-toggle { flex: 1; height: 35px; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: 800; cursor: pointer; transition: 0.2s; }
+        .beat-toggle.off { background: #475569; color: #94a3b8; opacity: 0.6; }
+        .bpm-display, .timer-display { font-size: 1.8rem; font-weight: 800; color: #fbbf24; font-variant-numeric: tabular-nums; }
+        .timer-display { color: var(--success); text-align: center; font-size: 2.2rem; }
+        input[type=range] { flex: 1; cursor: pointer; }
+        input[type=number] { background: #334155; border: 1px solid #475569; color: white; padding: 8px; border-radius: 8px; width: 60px; text-align: center; font-weight: bold; font-family: inherit; }
+        select, .btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-family: inherit; }
+        .btn-main { background: var(--primary); color: white; flex: 1; height: 40px; }
+        .btn-main.playing { background: var(--accent); }
+        .btn-pdf { background: #64748b; color: white; font-size: 0.85rem; }
+
+        /* 2. 중앙 메인 레이아웃 */
+        .main-layout { display: flex; gap: 30px; align-items: flex-start; width: 100%; margin-bottom: 20px; }
+        .left-sidebar { flex: 0 0 350px; display: flex; flex-direction: column; gap: 20px; }
+        .circle-container, .scale-container { background: var(--card); padding: 20px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        #circleOfFifths { width: 260px; height: 260px; cursor: pointer; }
+        .key-node circle { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 2; transition: 0.3s; }
+        .key-node text { font-size: 14px; font-weight: bold; fill: var(--dark); pointer-events: none; text-anchor: middle; alignment-baseline: central; }
+        .key-node.active circle { fill: var(--primary); stroke: var(--primary); }
+        .key-node.active text { fill: #fff; }
+        .scale-result { background: var(--scale-bg); padding: 15px; border-radius: 12px; min-height: 60px; text-align: center; width: 100%; box-sizing: border-box;}
+        .scale-notes { font-size: 1.3rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+
+        /* 코드 보드 스타일 복구 */
+        .progression-board { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; flex: 1; }
+        .measure-card { background: #fff; padding: 18px; border-radius: 15px; border: 1px solid #f1f5f9; border-left: 6px solid var(--primary); text-align: center; transition: 0.2s; }
+        .measure-card.active-beat { transform: scale(1.02); border: 2px solid var(--accent); border-left: 10px solid var(--accent); box-shadow: 0 0 15px rgba(225, 29, 72, 0.2); }
+        .chord-header { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-bottom: 12px; }
+        .chord-name { font-size: 1.7rem; font-weight: 800; color: var(--dark); }
+        .original-notes { font-size: 0.95rem; font-weight: 600; color: #94a3b8; letter-spacing: 0.5px; }
+        .notes-container { display: flex; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 10px; }
+        .note-name { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+        .pattern-info { font-size: 0.75rem; color: #94a3b8; font-weight: 600; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+
+        /* 3. 하단 PDF 뷰어 */
+        .pdf-viewer-section { width: 100%; background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; margin-top: 10px; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        #pdfFrame { width: 100%; height: 600px; border: 1px solid #e2e8f0; border-radius: 10px; display: none; }
+        .pdf-placeholder { width: 100%; height: 100px; border: 2px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
+
+        @media (max-width: 950px) {
+            .main-layout, .dashboard { grid-template-columns: 1fr; }
+            .left-sidebar { width: 100%; flex: none; }
+            #pdfFrame { height: 450px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="dashboard">
+        <div class="control-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div class="label-text">GAP CLICK METRONOME</div>
+                <div class="bpm-display" id="bpmValue">80 BPM</div>
+            </div>
+            <div class="panel-row">
+                <input type="range" id="bpmRange" min="40" max="220" value="80">
+            </div>
+            <div class="beat-selector">
+                <button class="beat-toggle off" data-beat="0">1</button>
+                <button class="beat-toggle" data-beat="1">2</button>
+                <button class="beat-toggle off" data-beat="2">3</button>
+                <button class="beat-toggle" data-beat="3">4</button>
+            </div>
+            <div class="panel-row">
+                <select id="noteResolution" style="flex:1.2;">
+                    <option value="1">4분 (1/4)</option>
+                    <option value="2">8분 (1/8)</option>
+                    <option value="4">16분 (1/16)</option>
+                </select>
+                <button id="metroBtn" class="btn btn-main">START</button>
+            </div>
+        </div>
+
+        <div class="control-card">
+            <div class="label-text">CUSTOM PRACTICE TIMER</div>
+            <div id="timerDisplay" class="timer-display">10:00</div>
+            <div class="panel-row" style="justify-content: center;">
+                <label for="timerInput" style="font-size: 0.8rem; color: #94a3b8;">Set Min:</label>
+                <input type="number" id="timerInput" min="1" max="99" value="10">
+            </div>
+            <div class="panel-row">
+                <button id="timerBtn" class="btn" style="background:var(--success); color:white; flex:2;">START</button>
+                <button id="resetTimerBtn" class="btn" style="background:#475569; color:white; flex:1;">RESET</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="left-sidebar">
+            <div class="circle-container">
+                <div style="font-weight: 800; margin-bottom: 10px;">⭕ 5도권 순환표</div>
+                <svg id="circleOfFifths" viewBox="0 0 300 300"></svg>
+            </div>
+            <div class="scale-container">
+                <div style="font-weight: 800; margin-bottom: 10px;">🎹 스케일 구성음</div>
+                <select id="scaleSelect" style="width:100%; margin-bottom:15px;">
+                    <option value="majorPentatonic">Major Pentatonic (1 2 3 5 6)</option>
+                    <option value="minorPentatonic">Minor Pentatonic (1 b3 4 5 b7)</option>
+                    <option value="altered">Altered Scale (1 b2 b3 b4 b5 b6 b7)</option>
+                    <option value="jazzMinor">Jazz Minor (1 2 b3 4 5 6 7)</option>
+                    <option value="dorian">Dorian Mode (1 2 b3 4 5 6 b7)</option>
+                    <option value="mixolydian">Mixolydian Mode (1 2 3 4 5 6 b7)</option>
+                </select>
+                <div class="scale-result">
+                    <div id="scaleNotesDisplay" class="scale-notes">-</div>
+                    <div id="scaleKeyLabel" style="font-size:0.75rem; color:var(--degree); margin-top:5px;">Select a Key</div>
+                </div>
+            </div>
+        </div>
+        <div class="progression-board" id="board"></div>
+    </div>
+
+    <div class="pdf-viewer-section">
+        <div class="pdf-header">
+            <div style="font-weight: 800; color: var(--dark);">📄 연습용 악보 (PDF)</div>
+            <input type="file" id="pdfInput" accept="application/pdf" style="display: none;">
+            <button class="btn btn-pdf" onclick="document.getElementById('pdfInput').click()">악보 선택 (.pdf)</button>
+        </div>
+        <div id="pdfPlaceholder" class="pdf-placeholder">
+            <div>연습할 PDF 파일을 선택해 주세요.</div>
+        </div>
+        <iframe id="pdfFrame"></iframe>
+    </div>
+</div>
+
+<script>
+    // PDF 로직
+    const pdfInput = document.getElementById('pdfInput'), pdfFrame = document.getElementById('pdfFrame'), pdfPlaceholder = document.getElementById('pdfPlaceholder');
+    pdfInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && file.type === 'application/pdf') {
+            pdfFrame.src = URL.createObjectURL(file);
+            pdfFrame.style.display = 'block'; pdfPlaceholder.style.display = 'none';
+        }
+    });
+
+    const noteNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    const circleOrder = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+    let currentKeyRoot = 0;
+
+    // 메트로놈 엔진
+    let audioCtx = null, isPlaying = false, currentBeat = 0, nextNoteTime = 0.0, timerID = null, bpm = 80, resolution = 1, totalElapsedBeats = 0;
+    let beatMutes = [false, true, false, true];
+
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+    function playClick(time, beat16) {
+        if (!beatMutes[Math.floor(beat16 / 4)]) return;
+        const osc = audioCtx.createOscillator(), env = audioCtx.createGain();
+        osc.frequency.value = (beat16 === 0) ? 1000 : (beat16 % 4 === 0 ? 600 : 400);
+        env.gain.setValueAtTime(0.2, time); env.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        osc.connect(env); env.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.05);
+    }
+
+    function scheduler() {
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            if (currentBeat % (4 / resolution) === 0) playClick(nextNoteTime, currentBeat);
+            if (currentBeat === 0) {
+                const ms = document.querySelectorAll('.measure-card');
+                ms.forEach(m => m.classList.remove('active-beat'));
+                const idx = Math.floor(totalElapsedBeats / 16) % 8;
+                if(ms[idx]) ms[idx].classList.add('active-beat');
+            }
+            nextNoteTime += (60.0 / bpm) / 4; currentBeat = (currentBeat + 1) % 16; totalElapsedBeats++;
+        }
+        timerID = setTimeout(scheduler, 25.0);
+    }
+
+    const metroBtn = document.getElementById('metroBtn');
+    document.querySelectorAll('.beat-toggle').forEach(btn => {
+        btn.onclick = () => {
+            const idx = parseInt(btn.dataset.beat);
+            beatMutes[idx] = !beatMutes[idx]; btn.classList.toggle('off', !beatMutes[idx]);
+        };
+    });
+
+    metroBtn.onclick = function() {
+        initAudio(); isPlaying = !isPlaying;
+        if (isPlaying) {
+            currentBeat = 0; totalElapsedBeats = 0; nextNoteTime = audioCtx.currentTime;
+            scheduler(); this.innerText = "STOP"; this.classList.add('playing');
+        } else {
+            clearTimeout(timerID); this.innerText = "START"; this.classList.remove('playing');
+            document.querySelectorAll('.measure-card').forEach(m => m.classList.remove('active-beat'));
+        }
+    };
+
+    document.getElementById('bpmRange').oninput = (e) => {
+        bpm = e.target.value; document.getElementById('bpmValue').innerText = `${bpm} BPM`;
+    };
+    document.getElementById('noteResolution').onchange = (e) => resolution = parseInt(e.target.value);
+
+    // 타이머 엔진
+    let timeLeft = 600, timerRunning = false, timerInterval = null;
+    function updateTimer() {
+        const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+        document.getElementById('timerDisplay').innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    document.getElementById('timerInput').oninput = function() {
+        if (!timerRunning) { timeLeft = parseInt(this.value) * 60; updateTimer(); }
+    };
+
+    document.getElementById('timerBtn').onclick = function() {
+        if (timerRunning) { clearInterval(timerInterval); this.innerText = "START"; this.style.background = "var(--success)"; }
+        else {
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) { timeLeft--; updateTimer(); }
+                else { clearInterval(timerInterval); timerRunning = false; alert("연습 종료!"); }
+            }, 1000);
+            this.innerText = "PAUSE"; this.style.background = "#f59e0b";
+        }
+        timerRunning = !timerRunning;
+    };
+
+    document.getElementById('resetTimerBtn').onclick = () => {
+        clearInterval(timerInterval); timerRunning = false;
+        timeLeft = parseInt(document.getElementById('timerInput').value) * 60;
+        updateTimer(); document.getElementById('timerBtn').innerText = "START";
+    };
+
+    // 스케일 데이터
+    const scaleForms = {
+        majorPentatonic: [0, 2, 4, 7, 9], minorPentatonic: [0, 3, 5, 7, 10], altered: [0, 1, 3, 4, 6, 8, 10],
+        jazzMinor: [0, 2, 3, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10]
+    };
+
+    const progressionPattern = [
+        { interval: 0, type: 'M7', label: 'I', deg2: 2 }, { interval: 5, type: 'M7', label: 'IV', deg2: 2 },
+        { interval: 11, type: 'm7b5', label: 'viiø', deg2: 1 }, { interval: 4, type: 'm7', label: 'iii', deg2: 1 },
+        { interval: 9, type: 'm7', label: 'vi', deg2: 2 }, { interval: 2, type: 'm7', label: 'ii', deg2: 2 },
+        { interval: 7, type: '7', label: 'V', deg2: 2 }, { interval: 0, type: 'M7', label: 'I', deg2: 2 }
+    ];
+    const forms = { 'M7': [0, 4, 7, 11], 'm7': [0, 3, 7, 10], '7': [0, 4, 7, 10], 'm7b5': [0, 3, 6, 10] };
+
+    function initCircle() {
+        const svg = document.getElementById('circleOfFifths');
+        circleOrder.forEach((n, i) => {
+            const a = (i * 30 - 90) * (Math.PI / 180), x = 150 + 105 * Math.cos(a), y = 150 + 105 * Math.sin(a);
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "key-node"); g.id = "node-" + n;
+            g.onclick = () => updateKey(n);
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 20);
+            const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            t.setAttribute("x", x); t.setAttribute("y", y); t.textContent = noteNames[n];
+            g.append(c, t); svg.append(g);
+        });
+    }
+
+    function updateKey(val) {
+        document.querySelectorAll('.key-node').forEach(n => n.classList.remove('active'));
+        document.getElementById('node-' + val).classList.add('active');
+        currentKeyRoot = parseInt(val); renderProgression(currentKeyRoot); renderScale();
+    }
+
+    function renderScale() {
+        const scaleType = document.getElementById('scaleSelect').value;
+        const notes = scaleForms[scaleType].map(f => noteNames[(currentKeyRoot + f) % 12]);
+        document.getElementById('scaleNotesDisplay').innerText = notes.join(' ');
+        document.getElementById('scaleKeyLabel').innerText = `Key: ${noteNames[currentKeyRoot]}`;
+    }
+
+    // 복구된 코드 렌더링 함수
+    function renderProgression(keyRoot) {
+        const board = document.getElementById('board'); board.innerHTML = '';
+        progressionPattern.forEach((p, idx) => {
+            const rIdx = (keyRoot + p.interval) % 12, cName = noteNames[rIdx] + (p.type === 'm7b5' ? 'm7b5' : p.type);
+            const tones = forms[p.type].map(f => noteNames[(rIdx + f) % 12]); // [Root, 3rd, 5th, 7th]
+            const root = noteNames[rIdx], third = tones[1], fifth = tones[2], seventh = tones[3];
+            const patternIdx = (idx + 1) % 2 !== 0 ? '3-2-1-7' : '3-5-1-7';
+            let data = ((idx + 1) % 2 !== 0) 
+                ? [{d:'3',n:third},{d:'2',n:noteNames[(rIdx+p.deg2)%12]},{d:'1',n:root},{d:'7',n:seventh}] 
+                : [{d:'3',n:third},{d:'5',n:fifth},{d:'1',n:root},{d:'7',n:seventh}];
+
+            const card = document.createElement('div'); card.className = 'measure-card';
+            card.innerHTML = `
+                <div style="font-size:0.7rem; color:#94a3b8;">BAR ${idx + 1} (${p.label})</div>
+                <div class="chord-header">
+                    <div class="chord-name">${cName}</div>
+                    <div class="original-notes">(${tones.join(' ')})</div>
+                </div>
+                <div class="notes-container">${data.map(d => `<div style="text-align:center;"><div style="font-size:0.7rem; color:var(--degree);">${d.d}</div><div class="note-name">${d.n}</div></div>`).join('')}</div>
+                <div class="pattern-info">Pattern: ${patternIdx}</div>`;
+            board.appendChild(card);
+        });
+    }
+
+    document.getElementById('scaleSelect').onchange = renderScale;
+    window.onload = () => { initCircle(); updateKey(0); updateTimer(); };
+</script>
+
+</body>
+</html>
